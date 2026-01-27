@@ -1,0 +1,73 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>LessRam</AssemblyName>
+    <Description>title</Description>
+    <Version>1.0.0</Version>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>latest</LangVersion>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <MpPluginFolder>/home/aiden/.local/share/Steam/steamapps/common/Project Arrhythmia/BepInEx/plugins/LessRam</MpPluginFolder>
+    <RestoreAdditionalProjectSources>
+      https://api.nuget.org/v3/index.json;
+      https://nuget.bepinex.dev/v3/index.json;
+      https://nuget.samboy.dev/v3/index.json;
+    </RestoreAdditionalProjectSources>
+    <RootNamespace>LessRam</RootNamespace>
+    <RunPostBuildEvent>OnOutputUpdated</RunPostBuildEvent>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+	  <PackageReference Include="Realm" Version="20.1.0" IncludeAssets="all" />
+      <PackageReference Include="BepInEx.Analyzers" Version="1.*" PrivateAssets="all" />
+      <PackageReference Include="BepInEx.Core" Version="5.*" />
+      <PackageReference Include="BepInEx.PluginInfoProps" Version="2.*" />
+      <PackageReference Include="UnityEngine.Modules" Version="2021.3.45" IncludeAssets="compile" />
+  </ItemGroup>
+    
+    <ItemGroup>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>lib\Assembly-CSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="Facepunch.Steamworks.Win64">
+      <HintPath>lib\Facepunch.Steamworks.Win64.dll</HintPath>
+    </Reference>
+    <Reference Include="IEVO.uGUIDirectedNavigation.Runtime">
+      <HintPath>lib\IEVO.uGUIDirectedNavigation.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.TextMeshPro">
+      <HintPath>lib\Unity.TextMeshPro.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.AudioModule">
+      <HintPath>lib\UnityEngine.AudioModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>lib\UnityEngine.CoreModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.ImageConversionModule">
+      <HintPath>lib\UnityEngine.ImageConversionModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>lib\UnityEngine.UI.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UnityWebRequestAudioModule">
+      <HintPath>lib\UnityEngine.UnityWebRequestAudioModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UnityWebRequestModule">
+      <HintPath>lib\UnityEngine.UnityWebRequestModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UnityWebRequestTextureModule">
+      <HintPath>lib\UnityEngine.UnityWebRequestTextureModule.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+	
+    <ItemGroup>
+      <None Include="lib\Facepunch.Steamworks.Win64.dll" />
+    </ItemGroup>
+
+    <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+      <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(MpPluginFolder)" />
+    </Target>
+</Project>
