@@ -8,7 +8,7 @@ namespace LessRam;
 
 [BepInPlugin(Guid, Name, Version)]
 [BepInProcess("Project Arrhythmia.exe")]
-[BepInDependency("me.ytarame.Multiplayer")]
+//[BepInDependency("me.ytarame.Multiplayer")]
 public class LessRam : BaseUnityPlugin
 {
     public static LessRam Inst;
