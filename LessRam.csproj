@@ -8,7 +8,6 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>latest</LangVersion>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-    <MpPluginFolder>/home/aiden/.local/share/Steam/steamapps/common/Project Arrhythmia/BepInEx/plugins/LessRam</MpPluginFolder>
     <RestoreAdditionalProjectSources>
       https://api.nuget.org/v3/index.json;
       https://nuget.bepinex.dev/v3/index.json;
@@ -20,7 +19,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-	  <PackageReference Include="Realm" Version="20.1.0" IncludeAssets="all" />
       <PackageReference Include="BepInEx.Analyzers" Version="1.*" PrivateAssets="all" />
       <PackageReference Include="BepInEx.Core" Version="5.*" />
       <PackageReference Include="BepInEx.PluginInfoProps" Version="2.*" />
@@ -62,12 +60,4 @@
       <HintPath>lib\UnityEngine.UnityWebRequestTextureModule.dll</HintPath>
     </Reference>
   </ItemGroup>
-	
-    <ItemGroup>
-      <None Include="lib\Facepunch.Steamworks.Win64.dll" />
-    </ItemGroup>
-
-    <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-      <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(MpPluginFolder)" />
-    </Target>
 </Project>

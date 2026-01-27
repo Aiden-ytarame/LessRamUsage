@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using CielaSpike;
 using HarmonyLib;
 using UnityEngine;
@@ -32,14 +33,13 @@ public static class GameManagerPatch
     static IEnumerator LoadAudio(VGLevel _level)
     {
         audioLoading = 1;
-        var levelRealm = LessRam.Inst.Realm.Find<VGLevelRealm>(_level.name);
-	
-		if (levelRealm != null)
-		{
-			yield return DataManager.inst.StartCoroutineAsync(LevelLoaderHelper.LoadAudio(_level, levelRealm!.AudioPath));
-			yield return DataManager.inst.StartCoroutineAsync(LevelLoaderHelper.LoadImage(_level, levelRealm.ImagePath));
-		}
+
+        VGLevelWrapper? levelRealm = LessRam.Levels!.GetValueOrDefault(_level.name, null);
         
+        yield return DataManager.inst.StartCoroutineAsync(LevelLoaderHelper.LoadAudio(_level, levelRealm!.AudioPath));
+        yield return DataManager.inst.StartCoroutineAsync(LevelLoaderHelper.LoadImage(_level, levelRealm.ImagePath));
+		
+    
         GameManager.Inst.LevelAudio = _level.LevelMusic;
         yield return new WaitForEndOfFrame();
         GameManager.Inst.CurLoadingState.Audio = true;

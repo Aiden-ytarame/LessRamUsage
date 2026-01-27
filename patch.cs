@@ -5,7 +5,6 @@ using System.Diagnostics;
 using HarmonyLib;
 using IEVO.UI.uGUIDirectedNavigation;
 using CielaSpike;
-using Realms;
 using Steamworks.Ugc;
 using UnityEngine;
 using VGFunctions;
@@ -71,43 +70,36 @@ public static class SteamWorkshopPatch
 	    SteamWorkshopFacepunch.inst.isLoadingLevels = false;
 	    LessRam.Logger.LogInfo($"Time to load levels [{stopWatch.ElapsedMilliseconds}ms]");
     }
+
     static void CreateEntry(SteamWorkshopFacepunch facepunch, Item entry)
     {
-	   LessRam.Logger.LogDebug($"Loaded [{entry.Title}]");
+	    VGLevelWrapper? level = MakeLevelRealmObject(entry.Id.ToString(), entry.Directory);
 
-	   using (var realm = Realm.GetInstance(RealmConfiguration.DefaultConfiguration))
-	   {
-		   realm.Write(() =>
-		   {
-				   VGLevelRealm? level = MakeLevelRealmObject(entry.Id.ToString(), entry.Directory);
+	    if (level == null)
+	    {
+		    return;
+	    }
 
-				   if (level == null)
-				   {
-					   return;
-				   }
-				   
-				   realm.Add(level);
-		   });
-	   }
+	    LessRam.Levels.Add(entry.Id.ToString(), level);
 
-	   VGLevel vGLevel = ScriptableObject.CreateInstance<VGLevel>();
-	   if (vGLevel.InitArcadeData(entry.Directory) && vGLevel.InitSteamInfoFix(entry.Id, entry.Directory))
-	   {
-		   vGLevel.name = entry.Id.ToString();
-		   ArcadeLevelDataManager.Inst.ArcadeLevels.Add(vGLevel);
-		   facepunch.TotalSteamWorkshopSubscriptionsDone++;
-	   }
+	    VGLevel vGLevel = ScriptableObject.CreateInstance<VGLevel>();
+	    if (vGLevel.InitArcadeData(entry.Directory) && vGLevel.InitSteamInfoFix(entry.Id, entry.Directory))
+	    {
+		    vGLevel.name = entry.Id.ToString();
+		    ArcadeLevelDataManager.Inst.ArcadeLevels.Add(vGLevel);
+		    facepunch.TotalSteamWorkshopSubscriptionsDone++;
+	    }
     }
-    static VGLevelRealm? MakeLevelRealmObject(string id, string directory)
+
+    static VGLevelWrapper? MakeLevelRealmObject(string id, string directory)
     {
 	    if (string.IsNullOrEmpty(directory))
 	    {
 		    return null;
 	    }
 
-	    VGLevelRealm level = new()
+	    VGLevelWrapper level = new()
 	    {
-		    LevelId = id,
 		    LevelPath = directory
 	    };
 
@@ -275,7 +267,7 @@ public static class ArcadeMenuPatch
 
 	static IEnumerator CreateButton(ArcadeHelpers.ArcadeButtonRefs button, VGLevel level, ArcadeMenu arcadeMenu)
 	{
-		var levelRealm = LessRam.Inst.Realm.Find<VGLevelRealm>(level.name);
+		VGLevelWrapper? levelRealm = LessRam.Levels.GetValueOrDefault(level.name, null);
 	
 		if (levelRealm != null)
 		{
@@ -356,7 +348,7 @@ public static class ArcadeDataPatch
 			return;
 		}
 
-		var levelRealm = LessRam.Inst.Realm.Find<VGLevelRealm>(__result.name);
+		VGLevelWrapper? levelRealm = LessRam.Levels.GetValueOrDefault(_id, null);
 		if (levelRealm == null)
 		{
 			return;
