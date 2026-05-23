@@ -60,4 +60,28 @@
       <HintPath>lib\UnityEngine.UnityWebRequestTextureModule.dll</HintPath>
     </Reference>
   </ItemGroup>
+  
+  <PropertyGroup>
+    <RootDir>../</RootDir>
+    <ReleaseDir>$(RootDir)Release/</ReleaseDir>
+    <PluginDir>$(ReleaseDir)plugins/$(MSBuildProjectName)/</PluginDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="$(RootDir)thunderstore/README.md" />
+    <AdditionalFiles Include="$(RootDir)thunderstore/manifest.json" />
+    <AdditionalFiles Include="$(RootDir)thunderstore/icon.png" Visible="false" />
+  </ItemGroup>
+  
+  <Target Name="PackageProduct" AfterTargets="PostBuildEvent">
+    <RemoveDir Directories="$(PluginDir)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(PluginDir)" />
+    <Copy SourceFiles="$(TargetDir)/$(AssemblyName).pdb" DestinationFolder="$(PluginDir)" Condition="'$(Configuration)' == 'Debug'" />
+    <Copy SourceFiles="@(AdditionalPluginsFiles)" DestinationFolder="$(PluginDir)" />
+    <Copy SourceFiles="@(AdditionalPatchersFiles)" DestinationFolder="$(PatcherDir)" />
+    <Copy SourceFiles="@(AdditionalFiles)" DestinationFolder="$(ReleaseDir)" ContinueOnError="true" />
+
+    <ZipDirectory SourceDirectory="$(ReleaseDir)" DestinationFile="$(RootDir)$(MSBuildProjectName)--$(Configuration).zip" Overwrite="true" />
+  </Target>
+  
 </Project>

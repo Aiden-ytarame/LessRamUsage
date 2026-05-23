@@ -9,31 +9,21 @@ namespace LessRam;
 [HarmonyPatch(typeof(GameManager))]
 public static class GameManagerPatch
 {
-    private static int audioLoading = 0;
-    
-      [HarmonyPrefix]
-      [HarmonyPatch(nameof(GameManager.LoadAudio), MethodType.Enumerator)]
-    public static bool PreLoadAudio(ref bool __result)
+    [HarmonyPatch(nameof(GameManager.LoadAudio))]
+    [HarmonyPrefix] 
+    public static bool PreLoadAudio(ref IEnumerator __result, VGLevel _level)
     {
-        if (!GameManager.Inst.IsArcade || ArcadeManager.Inst.CurrentArcadeLevel.LevelMusic)
+        if (!GameManager.Inst.IsArcade || _level.LevelMusic)
         {
             return true;
         }
-      
-        if(audioLoading == 0)
-            DataManager.inst.StartCoroutine(LoadAudio(ArcadeManager.Inst.CurrentArcadeLevel));
         
-        if (audioLoading == 2)
-            audioLoading = 0;
-      
-        __result = audioLoading == 1;
+        __result = LoadAudio(ArcadeManager.Inst.CurrentArcadeLevel);
         return false;
     }
     
     static IEnumerator LoadAudio(VGLevel _level)
     {
-        audioLoading = 1;
-
         VGLevelWrapper? levelRealm = LessRam.Levels!.GetValueOrDefault(_level.name, null);
         
         yield return DataManager.inst.StartCoroutineAsync(LevelLoaderHelper.LoadAudio(_level, levelRealm!.AudioPath));
@@ -41,9 +31,7 @@ public static class GameManagerPatch
 		
     
         GameManager.Inst.LevelAudio = _level.LevelMusic;
-        yield return new WaitForEndOfFrame();
         GameManager.Inst.CurLoadingState.Audio = true;
-        audioLoading = 2;
     }
 
     [HarmonyPatch(nameof(GameManager.PlayGame))]

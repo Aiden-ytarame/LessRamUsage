@@ -1,0 +1,9 @@
+{
+  "name": "LessRam",
+  "version_number": "1.0.2",
+  "website_url": "https://github.com/Aiden-ytarame/LessRamUsage/",
+  "description": "Severly decreases the ram usage by only loading images and audio from levels when necessary",
+  "dependencies": [
+    "BepInEx-BepInExPack-5.4.2304"
+  ]
+}

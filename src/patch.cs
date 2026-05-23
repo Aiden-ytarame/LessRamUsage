@@ -2,6 +2,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using HarmonyLib;
 using IEVO.UI.uGUIDirectedNavigation;
 using CielaSpike;
@@ -17,6 +20,8 @@ namespace LessRam;
 [HarmonyPatch(typeof(SteamWorkshopFacepunch))]
 public static class SteamWorkshopPatch
 {
+	private static object _lockObject = new();
+	
     [HarmonyPatch(nameof(SteamWorkshopFacepunch.DownloadLevels))]
     [HarmonyPrefix]
     public static bool PreStart(SteamWorkshopFacepunch __instance, ref Task __result)
@@ -32,63 +37,125 @@ public static class SteamWorkshopPatch
 	    
 	    facepunch.TotalSteamWorkshopSubscriptions = 0;
 	    facepunch.TotalSteamWorkshopSubscriptionsDone = 0;
+	    SteamWorkshopFacepunch.inst.isLoadingLevels = true;
 	    
 	    Query q = Query.ItemsReadyToUse.WhereUserSubscribed().SortByCreationDate();
-	    int pageNum = 1;
-	    ResultPage? resultPage = await q.GetPageAsync(pageNum);
+	    
+	
+	    ResultPage? resultPage = await q.GetPageAsync(1);
 	    if (!resultPage.HasValue)
 	    {
 		    stopWatch.Stop();
 		    LessRam.Logger.LogError($"Level loading failure [{stopWatch.ElapsedMilliseconds}]");
 		    return;
 	    }
-	 
+	    
 	    facepunch.TotalSteamWorkshopSubscriptions = resultPage.Value.TotalCount;
-	    while (resultPage.HasValue && resultPage.Value.ResultCount > 0 &&
-	           !SingletonBase<ArcadeManager>.Inst.skippedLoad)
-	    {
-		    SteamWorkshopFacepunch.inst.isLoadingLevels = true;
-		    foreach (Item entry in resultPage.Value.Entries)
-		    {
-			    if (SingletonBase<ArcadeManager>.Inst.skippedLoad)
-			    {
-				    return;
-			    }
 
-			    if (entry.IsInstalled)
+	    foreach (Item entry in resultPage.Value.Entries)
+	    {
+		    if (SingletonBase<ArcadeManager>.Inst.skippedLoad)
+		    {
+			    return;
+		    }
+
+		    if (entry.IsInstalled)
+		    {
+			    var level = CreateEntry(facepunch, entry);
+			    if (level.HasValue)
 			    {
-				    CreateEntry(facepunch, entry);
-				    //CreateEntry(facepunch, entry);
+				    LessRam.Levels.Add(level.Value.Item1.name, level.Value.Item2);
+				    ArcadeLevelDataManager.Inst.ArcadeLevels.Add(level.Value.Item1);
+				    facepunch.TotalSteamWorkshopSubscriptionsDone++;
 			    }
 		    }
-		    
-		    pageNum++;
-		    resultPage = await q.GetPageAsync(pageNum);
 	    }
+        
+	    int totalPages = Mathf.CeilToInt((float)resultPage.Value.TotalCount / resultPage.Value.ResultCount);
+
+	    using SemaphoreSlim semaphore = new SemaphoreSlim(LessRam.SemaphoreCount);
 	    
+	    List<Task> tasks = new();
+	   
+	    for (int i = 2; i < totalPages; i++)
+	    {
+		    await semaphore.WaitAsync();
+		    LessRam.Logger.LogInfo($"loading page {i}");
+		    int iteration = i;
+		    tasks.Add(Task.Run(async () =>
+		    {
+			    ResultPage? page;
+			    try
+			    {
+				    page = await q.GetPageAsync(iteration);
+				    
+				    if (!page.HasValue)
+				    {
+					    LessRam.Logger.LogError(
+						    $"{iteration} no value"); //sometimes this log looks weird, but it should never happen anyway
+					    return;
+				    }
+
+				    List<(VGLevel, VGLevelWrapper)> levels = new(page.Value.ResultCount);
+				    foreach (Item entry in page.Value.Entries)
+				    {
+					    if (SingletonBase<ArcadeManager>.Inst.skippedLoad)
+					    {
+						    return;
+					    }
+
+					    if (entry.IsInstalled)
+					    {
+						    var level = CreateEntry(facepunch, entry);
+						    if (level.HasValue)
+						    {
+							    levels.Add(level.Value);
+						    }
+					    }
+				    }
+				    
+				    lock (_lockObject)
+				    {
+					    foreach (var vgLevel in levels)
+					    {
+						    LessRam.Levels.Add(vgLevel.Item1.name, vgLevel.Item2);
+						    ArcadeLevelDataManager.Inst.ArcadeLevels.Add(vgLevel.Item1);
+						    facepunch.TotalSteamWorkshopSubscriptionsDone++;
+					    }
+				    }
+				    
+			    }
+			    finally
+			    {
+				    semaphore.Release();
+			    }
+		    }));
+	    }
+
+	    await Task.WhenAll(tasks);
 	    stopWatch.Stop();
+	    
 	    SteamWorkshopFacepunch.inst.isLoadingLevels = false;
 	    LessRam.Logger.LogInfo($"Time to load levels [{stopWatch.ElapsedMilliseconds}ms]");
     }
 
-    static void CreateEntry(SteamWorkshopFacepunch facepunch, Item entry)
+    static (VGLevel,VGLevelWrapper)? CreateEntry(SteamWorkshopFacepunch facepunch, Item entry)
     {
 	    VGLevelWrapper? level = MakeLevelRealmObject(entry.Id.ToString(), entry.Directory);
 
 	    if (level == null)
 	    {
-		    return;
+		    return null;
 	    }
-
-	    LessRam.Levels.Add(entry.Id.ToString(), level);
 
 	    VGLevel vGLevel = ScriptableObject.CreateInstance<VGLevel>();
 	    if (vGLevel.InitArcadeData(entry.Directory) && vGLevel.InitSteamInfoFix(entry.Id, entry.Directory))
 	    {
 		    vGLevel.name = entry.Id.ToString();
-		    ArcadeLevelDataManager.Inst.ArcadeLevels.Add(vGLevel);
-		    facepunch.TotalSteamWorkshopSubscriptionsDone++;
+		    return (vGLevel, level);
 	    }
+
+	    return null;
     }
 
     static VGLevelWrapper? MakeLevelRealmObject(string id, string directory)
@@ -355,5 +422,38 @@ public static class ArcadeDataPatch
 		}
 		__instance.StartCoroutineAsync(LevelLoaderHelper.LoadAudio(__result, levelRealm!.AudioPath));
 		__instance.StartCoroutineAsync(LevelLoaderHelper.LoadImage(__result, levelRealm!.ImagePath));
+	}
+}
+
+[HarmonyPatch(typeof(LSText))]
+public static class LSTextPatch
+{
+	[HarmonyPatch(nameof(LSText.ClampString))]
+	[HarmonyPrefix]
+	static bool PreClamp(ref string __result, string _inputStr, int _maxLength, string _end)
+	{
+		if (!SteamWorkshopFacepunch.inst.isLoadingLevels) //stupid hack, if we are loading LSText.sb would be accessed by multiple threads
+		{
+			return true;
+		}
+
+		if (string.IsNullOrEmpty(_inputStr) || _inputStr.Length <= _maxLength)
+		{
+			__result = _inputStr;
+			return false;
+		}
+
+		StringBuilder sb = new();
+		if (_end == null)
+		{
+			sb.Append(_inputStr.Substring(0, _maxLength));
+		}
+		else
+		{
+			sb.Append(_inputStr.Substring(0, _maxLength - (_end.Length - 1)));
+			sb.Append(_end);
+		}
+		__result = sb.ToString();
+		return false;
 	}
 }

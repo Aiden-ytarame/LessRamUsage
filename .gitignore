@@ -1,8 +1,11 @@
-lib/ 
-bin/
+lib/
+*bin/
 obj/
+Release/
+*.zip
 .vs/
 .md
+*.bak
 .idea/
-.user
-Folder.DotSettings.user
+*.user
+*.DotSettings
